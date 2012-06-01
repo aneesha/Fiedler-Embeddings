@@ -33,9 +33,12 @@ matrix=array([[1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0],
 nodocs, noterms = matrix.shape
 		   
 # Create word-word mapping matrix
-WW = zeros((noterms,noterms))	
+# Initially constructed from the doc-word matrix
+#WW = zeros((noterms,noterms))	
+WW = dot(matrix.transpose(),matrix)
 # Create doc-doc mapping matrix	
-DD = zeros((nodocs,nodocs))
+#DD = zeros((nodocs,nodocs))
+DD = dot(matrix,matrix.transpose())
 
 B = matrix * (-1)
 BT = B.transpose()
