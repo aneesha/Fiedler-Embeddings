@@ -3,6 +3,12 @@ from scipy import linalg,array,dot,mat
 from math import *
 from pprint import pprint
 
+def query(S,q):
+	'''Takes S the k-dimensional embedded space and the query vector as a parameter'''
+	q_norm = q/linalg.norm(q) # normalize query vector
+	qpos = S.transpose() * q_norm
+	return qpos
+
 '''
 # Example document-term matrix
 # Sentences from http://web.eecs.utk.edu/~berry/order/node4.html#SECTION00022000000000000000
@@ -52,7 +58,7 @@ BT = B.transpose()
 L = bmat('WW,BT; B,DD')
 
 # k = dimension after dimension reduction
-k = 2
+k = 3
 
 # Perform Eigen Decomposition on the Laplacian matrix L where L = V * D * (VT) where VT is Transpose of V
 # V and D are the eigenvectors and eigenvalues 
@@ -72,5 +78,15 @@ kevecs = evecs[:, (no_eigenvalues-1-k):(no_eigenvalues-1) ]
 # Make S the k-dimensional embedded space S = (Dk^0.5) * VkT
 # where Dk and Vk are the k eigenvalues and corresponding
 S = power(kevecs, 0.5) * kevals.transpose()
-	
+
+# Query - human + interface
+# Query is constructed with first terms = words (1 to nodocs) and then documents (nodocs+1 to nodocs+1+nodocs)
+# Is this the correct way to create the query? Can query on docs and words?
+q1 = array([0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+qpos= query(S,q1)
+
 print S
+print qpos.transpose()
+
+#ToDo - Find k-nearest neighbours
