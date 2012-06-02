@@ -2,12 +2,17 @@ from numpy import *
 from scipy import linalg,array,dot,mat
 from math import *
 from pprint import pprint
+import operator
 
-def query(S,q):
+def query(S,q,K):
 	'''Takes S the k-dimensional embedded space and the query vector as a parameter'''
 	q_norm = q/linalg.norm(q) # normalize query vector
-	qpos = S.transpose() * q_norm
+	qpos = dot(S.transpose(),q_norm)
+	
+	""" find K nearest neighbours of in embedded space S """
+
 	return qpos
+
 
 '''
 # Example document-term matrix
@@ -58,35 +63,30 @@ BT = B.transpose()
 L = bmat('WW,BT; B,DD')
 
 # k = dimension after dimension reduction
-k = 3
+k = 2
 
 # Perform Eigen Decomposition on the Laplacian matrix L where L = V * D * (VT) where VT is Transpose of V
 # V and D are the eigenvectors and eigenvalues 
 evals, evecs = linalg.eig(L)
 
-# Sort Eigenvalues	
-evals_sorted = sort(evals)
-
 # Remove largest eigenvalue and get next k largest eigenvalues
-no_eigenvalues = evals_sorted.shape[0]
+#evals_sorted = sort(evals)
+no_eigenvalues = evals.shape[0]
+kevals = evals[(no_eigenvalues-1-k):(no_eigenvalues-1)]
+kevecs = evecs[:, (no_eigenvalues-1-k):(no_eigenvalues-1)]
 
-kevals = evals_sorted[(no_eigenvalues-1-k):(no_eigenvalues-1)]
-
-# Confused about how to get kevecs (should they match evals?)
-kevecs = evecs[:, (no_eigenvalues-1-k):(no_eigenvalues-1) ]
-	
 # Make S the k-dimensional embedded space S = (Dk^0.5) * VkT
 # where Dk and Vk are the k eigenvalues and corresponding
 S = power(kevecs, 0.5) * kevals.transpose()
 
+print S
+
+
 # Query - human + interface
 # Query is constructed with first terms = words (1 to nodocs) and then documents (nodocs+1 to nodocs+1+nodocs)
 # Is this the correct way to create the query? Can query on docs and words?
-q1 = array([0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+q1 = array([0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
-qpos= query(S,q1)
+qpos = query(S,q1,3)
 
-print S
-print qpos.transpose()
-
-#ToDo - Find k-nearest neighbours
+print qpos
