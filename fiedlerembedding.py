@@ -70,20 +70,21 @@ def fiedlerEmbeddedSpace(L,k):
 	# Should only real values be returned?
 	# when evecs_k**0.5 is used I get nan?
 	# Is this the correct equation?
-	S = ((evecs_k**0.5) * eval_k.transpose()).real
+	eval_k = diag(eval_k,0)**0.5
+	#S = ((eval_k**0.5) * evecs_k).real
+	S = dot(eval_k,evecs_k.T)
 	return S	
 	
 
 def query(S,q):
 	'''Takes S the k-dimensional embedded space and the query vector as a parameter'''
 	q_norm = q/linalg.norm(q) # normalize query vector
-	qpos = dot(S.transpose(),q_norm)
+	qpos = dot(S,q_norm)
 	return qpos
 
 def knnMatches(S,qpos,K):
 	""" find the K nearest neighbours of in embedded space S """
 	qpos = qpos.T
-	S = S.T
 	diff = (S.T - qpos)**2
 	diff_sum = array(add.reduce(diff, axis=1))	
 	diff_sum = diff_sum**0.5
@@ -124,6 +125,9 @@ L = createLaplacian(docterm)
 k = 2
 S = fiedlerEmbeddedSpace(L,k)
 
+print S
+
+
 q = array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 qpos = query(S,q)
 
@@ -132,4 +136,3 @@ matches = knnMatches(S,qpos,9)
 for i in matches:
 	print termanddocvect[i]
 
-print S.T
