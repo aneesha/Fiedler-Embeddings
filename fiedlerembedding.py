@@ -2,17 +2,93 @@ from numpy import *
 from scipy import linalg,array,dot,mat
 from math import *
 from pprint import pprint
-import operator
 
-def query(S,q,K):
+def createLaplacian(DoctermMatrix):
+	# Create word-word mapping matrix
+	# WW and DD to be eventually constructed from an external source
+	# Created from sum of word and docs (as per example in Hendrickson paper)
+	#WW  = diag(add.reduce(DoctermMatrix),0) 
+	#DD = diag(add.reduce(DoctermMatrix, axis=1),0) 
+	
+	# Create word-word mapping matrix
+	# Initially constructed from the doc-word matrix	
+	WW = dot(DoctermMatrix.transpose(),DoctermMatrix)
+	# Create doc-doc mapping matrix	
+	DD = dot(DoctermMatrix,DoctermMatrix.transpose())
+	B = DoctermMatrix * (-1)
+	BT = B.transpose()
+
+	# Create Block Matrix L
+	# L is a (nodocs + noterms) by (nodocs + noterms) matrix
+	#  ---      ---
+	# WW    BT  
+	# B        DD
+	#  ---      ---
+	L = bmat('WW,BT; B,DD')
+	return L
+
+
+def fiedlerEmbeddedSpace(L,k):
+	# L = Laplacian
+	# k = dimension after dimension reduction
+
+	# Perform Eigen Decomposition on the Laplacian matrix L where L = V * D * (VT) where VT is Transpose of V
+	# V and D are the eigenvectors and eigenvalues 
+	evals, evecs = linalg.eig(L)
+
+	#Store eigenvalues in a dictionary so they can be sorted but the index can still be obtained
+	# Need the k smallest eigenvalues (non zero) and eigenvectors
+	evaldict = {}
+	count = 0
+	for eval in evals:
+		evaldict[count] = eval
+		count = count + 1
+	ordered_eval_list = sorted(evaldict, key=evaldict.get, reverse=True)
+
+	eval_k_index = []
+	assigned_eval = 0;
+	for i in range(len(ordered_eval_list)):
+		curr_eval = evals[ordered_eval_list[i]]
+		if (curr_eval  != 0):
+			assigned_eval = assigned_eval + 1
+			eval_k_index.append(ordered_eval_list[i])
+		if (assigned_eval==k):
+			break
+
+	eval_k = []
+	evecs_k = []
+	for eval in range(len(eval_k_index)):
+		col_index = eval_k_index[eval]
+		eval_k.append(evals[col_index])
+		evecs_k.append(evecs[col_index,:])
+
+	eval_k = array(eval_k)
+	evecs_k = array(evecs_k).T
+
+	# Make S the k-dimensional embedded space S = (Dk^0.5) * VkT
+	# where Dk and Vk are the k eigenvalues and corresponding
+	# Should only real values be returned?
+	# when evecs_k**0.5 is used I get nan?
+	# Is this the correct equation?
+	S = ((evecs_k**0.5) * eval_k.transpose()).real
+	return S	
+	
+
+def query(S,q):
 	'''Takes S the k-dimensional embedded space and the query vector as a parameter'''
 	q_norm = q/linalg.norm(q) # normalize query vector
 	qpos = dot(S.transpose(),q_norm)
-	
-	""" find K nearest neighbours of in embedded space S """
-
 	return qpos
 
+def knnMatches(S,qpos,K):
+	""" find the K nearest neighbours of in embedded space S """
+	qpos = qpos.T
+	S = S.T
+	diff = (S.T - qpos)**2
+	diff_sum = array(add.reduce(diff, axis=1))	
+	diff_sum = diff_sum**0.5
+	idx = argsort(diff_sum) 
+	return idx[:K]
 
 '''
 # Example document-term matrix
@@ -29,9 +105,10 @@ def query(S,q,K):
 # M3 = Graph minors IV: Widths of trees and quasi-ordering
 # M4 = Graph minors: A survey
 '''
+termanddocvect = ["computer", "EPS", "human", "interface", "response", "system", "time", "user", "minors", "survey","trees", "graph", "C1", "C2", "C3", "C4", "C5", "M1", "M2", "M3", "M4"]
 
 # Vector dimensions: computer, EPS, human, interface, response, system, time, user, minors, survey,trees, graph
-matrix=array([[1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0], 
+docterm=array([[1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0], 
 		   [1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0], 
 		   [0.0, 1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 
 		   [0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], 
@@ -41,52 +118,18 @@ matrix=array([[1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0],
 		   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0], 
 		   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0]])
 
-nodocs, noterms = matrix.shape
-		   
-# Create word-word mapping matrix
-# Initially constructed from the doc-word matrix
-#WW = zeros((noterms,noterms))	
-WW = dot(matrix.transpose(),matrix)
-# Create doc-doc mapping matrix	
-#DD = zeros((nodocs,nodocs))
-DD = dot(matrix,matrix.transpose())
+# Create Laplacian block Matrix
+L = createLaplacian(docterm)
 
-B = matrix * (-1)
-BT = B.transpose()
-
-# Create Block Matrix L
-# L is a (nodocs + noterms) by (nodocs + noterms) matrix
-#  ---            ---
-# |  WW    BT  |
-# |  B        DD  |  
-#  ---            ---
-L = bmat('WW,BT; B,DD')
-
-# k = dimension after dimension reduction
 k = 2
+S = fiedlerEmbeddedSpace(L,k)
 
-# Perform Eigen Decomposition on the Laplacian matrix L where L = V * D * (VT) where VT is Transpose of V
-# V and D are the eigenvectors and eigenvalues 
-evals, evecs = linalg.eig(L)
+q = array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+qpos = query(S,q)
 
-# Remove largest eigenvalue and get next k largest eigenvalues
-#evals_sorted = sort(evals)
-no_eigenvalues = evals.shape[0]
-kevals = evals[(no_eigenvalues-1-k):(no_eigenvalues-1)]
-kevecs = evecs[:, (no_eigenvalues-1-k):(no_eigenvalues-1)]
+matches = knnMatches(S,qpos,9)
 
-# Make S the k-dimensional embedded space S = (Dk^0.5) * VkT
-# where Dk and Vk are the k eigenvalues and corresponding
-S = power(kevecs, 0.5) * kevals.transpose()
+for i in matches:
+	print termanddocvect[i]
 
-print S
-
-
-# Query - human + interface
-# Query is constructed with first terms = words (1 to nodocs) and then documents (nodocs+1 to nodocs+1+nodocs)
-# Is this the correct way to create the query? Can query on docs and words?
-q1 = array([0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-
-qpos = query(S,q1,3)
-
-print qpos
+print S.T
