@@ -7,14 +7,15 @@ def createLaplacian(DoctermMatrix):
 	# Create word-word mapping matrix
 	# WW and DD to be eventually constructed from an external source
 	# Created from sum of word and docs (as per example in Hendrickson paper)
-	#WW  = diag(add.reduce(DoctermMatrix),0) 
-	#DD = diag(add.reduce(DoctermMatrix, axis=1),0) 
+	WW  = diag(add.reduce(DoctermMatrix),0) 
+	DD = diag(add.reduce(DoctermMatrix, axis=1),0) 
 	
 	# Create word-word mapping matrix
 	# Initially constructed from the doc-word matrix	
-	WW = dot(DoctermMatrix.transpose(),DoctermMatrix)
+	#WW = dot(DoctermMatrix.transpose(),DoctermMatrix)
 	# Create doc-doc mapping matrix	
-	DD = dot(DoctermMatrix,DoctermMatrix.transpose())
+	#DD = dot(DoctermMatrix,DoctermMatrix.transpose())
+	
 	B = DoctermMatrix * (-1)
 	BT = B.transpose()
 
@@ -35,19 +36,25 @@ def fiedlerEmbeddedSpace(L,k):
 	# Perform Eigen Decomposition on the Laplacian matrix L where L = V * D * (VT) where VT is Transpose of V
 	# V and D are the eigenvectors and eigenvalues 
 	evals, evecs = linalg.eig(L)
+	
+	#reconstructedL = dot(evecs,diag(evals,0))
+	#reconstructedL = dot(reconstructedL,evecs.T).real
+	#print reconstructedL
 
 	#Store eigenvalues in a dictionary so they can be sorted but the index can still be obtained
-	# Need the k smallest eigenvalues (non zero) and eigenvectors
+	# Need the k+1  eigenvalues (non zero) and eigenvectors
+	# ie the largest eigenvalue is not included
+	#Eigenvalues must be in increasing order
 	evaldict = {}
 	count = 0
 	for eval in evals:
 		evaldict[count] = eval
 		count = count + 1
-	ordered_eval_list = sorted(evaldict, key=evaldict.get, reverse=True)
+	ordered_eval_list = sorted(evaldict, key=evaldict.get, reverse=False)
 
 	eval_k_index = []
 	assigned_eval = 0;
-	for i in range(len(ordered_eval_list)):
+	for i in range(1,len(ordered_eval_list)):
 		curr_eval = evals[ordered_eval_list[i]]
 		if (curr_eval  != 0):
 			assigned_eval = assigned_eval + 1
@@ -125,13 +132,14 @@ L = createLaplacian(docterm)
 k = 2
 S = fiedlerEmbeddedSpace(L,k)
 
-print S
 
+print S.real
 
+# query for human
 q = array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 qpos = query(S,q)
 
-matches = knnMatches(S,qpos,9)
+matches = knnMatches(S,qpos,4)
 
 for i in matches:
 	print termanddocvect[i]
