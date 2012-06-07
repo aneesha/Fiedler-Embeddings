@@ -1,5 +1,6 @@
 from numpy import *
 from scipy import linalg,array,dot,mat
+from scipy.sparse.linalg import eigsh
 from math import *
 from pprint import pprint
 
@@ -35,50 +36,30 @@ def fiedlerEmbeddedSpace(L,k):
 
 	# Perform Eigen Decomposition on the Laplacian matrix L where L = V * D * (VT) where VT is Transpose of V
 	# V and D are the eigenvectors and eigenvalues 
-	evals, evecs = linalg.eig(L)
-	
-	#reconstructedL = dot(evecs,diag(evals,0))
-	#reconstructedL = dot(reconstructedL,evecs.T).real
-	#print reconstructedL
 
-	#Store eigenvalues in a dictionary so they can be sorted but the index can still be obtained
 	# Need the k+1  eigenvalues (non zero) and eigenvectors
-	# ie the largest eigenvalue is not included
-	#Eigenvalues must be in increasing order
-	evaldict = {}
-	count = 0
-	for eval in evals:
-		evaldict[count] = eval
-		count = count + 1
-	ordered_eval_list = sorted(evaldict, key=evaldict.get, reverse=False)
-
-	eval_k_index = []
-	assigned_eval = 0;
-	for i in range(1,len(ordered_eval_list)):
-		curr_eval = evals[ordered_eval_list[i]]
-		if (curr_eval  != 0):
-			assigned_eval = assigned_eval + 1
-			eval_k_index.append(ordered_eval_list[i])
-		if (assigned_eval==k):
-			break
+	# ie the smallest eigenvalue is not included
+	# Eigenvalues must be in increasing order
+	
+	evals, evecs = eigsh(L, (k+1), which='SM', maxiter=5000)
+	# Note if you have scipy 0.11 consider using shift invert mode
+	# evals_small, evecs_small = eigsh(X, 3, sigma=0, which='LM')
 
 	eval_k = []
 	evecs_k = []
-	for eval in range(len(eval_k_index)):
-		col_index = eval_k_index[eval]
-		eval_k.append(evals[col_index])
-		evecs_k.append(evecs[col_index,:])
+	for eval_index in range(1,len(evals)):
+		eval_k.append(evals[eval_index])
+		evecs_k.append(evecs[:,eval_index])
 
 	eval_k = array(eval_k)
 	evecs_k = array(evecs_k).T
-
+	
 	# Make S the k-dimensional embedded space S = (Dk^0.5) * VkT
 	# where Dk and Vk are the k eigenvalues and corresponding
 	# Should only real values be returned?
 	# when evecs_k**0.5 is used I get nan?
 	# Is this the correct equation?
 	eval_k = diag(eval_k,0)**0.5
-	#S = ((eval_k**0.5) * evecs_k).real
 	S = dot(eval_k,evecs_k.T)
 	return S	
 	
@@ -132,14 +113,13 @@ L = createLaplacian(docterm)
 k = 2
 S = fiedlerEmbeddedSpace(L,k)
 
-
-print S.real
+print S
 
 # query for human
-q = array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+q = array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
 qpos = query(S,q)
 
-matches = knnMatches(S,qpos,4)
+matches = knnMatches(S,qpos,9)
 
 for i in matches:
 	print termanddocvect[i]
