@@ -8,18 +8,18 @@ def createLaplacian(DoctermMatrix):
 	# Create word-word mapping matrix
 	# WW and DD to be eventually constructed from an external source
 	# Created from sum of word and docs (as per example in Hendrickson paper)
-	WW  = diag(add.reduce(DoctermMatrix),0) 
-	DD = diag(add.reduce(DoctermMatrix, axis=1),0) 
+	#WW  = diag(add.reduce(DoctermMatrix),0) 
+	#DD = diag(add.reduce(DoctermMatrix, axis=1),0) 
 	
 	# Create word-word mapping matrix
 	# Initially constructed from the doc-word matrix	
-	#WW = dot(DoctermMatrix.transpose(),DoctermMatrix)
+	WW = dot(DoctermMatrix.transpose(),DoctermMatrix) * (-1)
 	# Create doc-doc mapping matrix	
-	#DD = dot(DoctermMatrix,DoctermMatrix.transpose())
+	DD = dot(DoctermMatrix,DoctermMatrix.transpose()) * (-1)
 	
 	B = DoctermMatrix * (-1)
 	BT = B.transpose()
-
+	
 	# Create Block Matrix L
 	# L is a (nodocs + noterms) by (nodocs + noterms) matrix
 	#  ---      ---
@@ -27,6 +27,12 @@ def createLaplacian(DoctermMatrix):
 	# B        DD
 	#  ---      ---
 	L = bmat('WW,BT; B,DD')
+
+	# Make sure the diagonal values make the row-sums add to zero
+	#Set the diagonals of L to 0
+	fill_diagonal(L, 0)
+	L_diag = L.sum(axis=1) * (-1)
+	fill_diagonal(L, L_diag)
 	return L
 
 
@@ -116,7 +122,7 @@ S = fiedlerEmbeddedSpace(L,k)
 print S
 
 # query for human
-q = array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+q = array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 qpos = query(S,q)
 
 matches = knnMatches(S,qpos,9)
