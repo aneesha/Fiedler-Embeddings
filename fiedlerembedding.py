@@ -50,7 +50,11 @@ def fiedlerEmbeddedSpace(L,k):
 	evals, evecs = eigsh(L, (k+1), which='SM', maxiter=5000)
 	# Note if you have scipy 0.11 consider using shift invert mode
 	# evals_small, evecs_small = eigsh(X, 3, sigma=0, which='LM')
+	
+	sigma, eigenvects = eigsh(L, (k+1, which='SM', return_eigenvectors=True)
+        fieldler_vector = sigma[1], X[:, 1]
 
+	'''
 	eval_k = []
 	evecs_k = []
 	for eval_index in range(1,len(evals)):
@@ -59,7 +63,9 @@ def fiedlerEmbeddedSpace(L,k):
 
 	eval_k = array(eval_k)
 	evecs_k = array(evecs_k).T
-	
+	'''
+	eval_k = fieldler_vector[0]
+	evecs_k = fieldler_vector[1].T
 	# Make S the k-dimensional embedded space S = (Dk^0.5) * VkT
 	# where Dk and Vk are the k eigenvalues and corresponding
 	# Should only real values be returned?
@@ -68,7 +74,6 @@ def fiedlerEmbeddedSpace(L,k):
 	eval_k = diag(eval_k,0)**0.5
 	S = dot(eval_k,evecs_k.T)
 	return S	
-	
 
 def query(S,q):
 	'''Takes S the k-dimensional embedded space and the query vector as a parameter'''
